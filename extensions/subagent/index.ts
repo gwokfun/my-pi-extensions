@@ -37,6 +37,8 @@ import {
 	discoverAgents,
 	isValidThinkingLevel,
 } from "./agents.ts";
+import { liveRuns } from "./live-state.ts";
+import { openSubagentViewer } from "./viewer.ts";
 
 const PACKAGE_AGENTS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "agents");
 
@@ -206,6 +208,7 @@ function getFinalOutput(messages: Message[]): string {
 }
 
 function isFailedResult(result: SingleResult): boolean {
+	if (result.exitCode === -1) return false; // still running
 	return result.exitCode !== 0 || result.stopReason === "error" || result.stopReason === "aborted";
 }
 
@@ -339,7 +342,7 @@ async function runSingleAgent(
 		agent: agentName,
 		agentSource: agent.source,
 		task,
-		exitCode: 0,
+		exitCode: -1, // -1 = running (for live viewer / parallel placeholders)
 		messages: [],
 		stderr: "",
 		usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 },
@@ -510,6 +513,20 @@ function overridesFrom(params: { model?: string; thinking?: string }): RunOverri
 }
 
 export default function (pi: ExtensionAPI) {
+	pi.registerCommand("subagent-view", {
+		description: "Open fullscreen overlay to watch live/latest subagent run (Esc/q close)",
+		handler: async (_args, ctx) => {
+			await openSubagentViewer(ctx);
+		},
+	});
+
+	pi.registerShortcut("ctrl+shift+s", {
+		description: "Open subagent viewer overlay",
+		handler: async (ctx) => {
+			await openSubagentViewer(ctx);
+		},
+	});
+
 	pi.registerTool({
 		name: "subagent",
 		label: "Subagent",
@@ -517,12 +534,13 @@ export default function (pi: ExtensionAPI) {
 			"Delegate tasks to specialized subagents with isolated context.",
 			"Modes: single (agent + task), parallel (tasks array), chain (sequential with {previous} placeholder).",
 			"Optional model and thinking overrides per call (else agent frontmatter defaults).",
+			"Open /subagent-view or Ctrl+Shift+S to watch a live run in a fullscreen overlay.",
 			`Bundled agents ship with this extension; user agents load from ${path.join(getAgentDir(), "agents")}.`,
 			`To enable project-local agents in ${CONFIG_DIR_NAME}/agents, set agentScope: "both" (or "project").`,
 		].join(" "),
 		parameters: SubagentParams,
 
-		async execute(_toolCallId, params, signal, onUpdate, ctx) {
+		async execute(toolCallId, params, signal, onUpdate, ctx) {
 			const agentScope: AgentScope = params.agentScope ?? "user";
 			const discovery = discoverAgents(ctx.cwd, agentScope, PACKAGE_AGENTS_DIR);
 			const agents = discovery.agents;
@@ -535,13 +553,23 @@ export default function (pi: ExtensionAPI) {
 
 			const makeDetails =
 				(mode: "single" | "parallel" | "chain") =>
-				(results: SingleResult[]): SubagentDetails => ({
-					mode,
-					agentScope,
-					projectAgentsDir: discovery.projectAgentsDir,
-					packageAgentsDir: discovery.packageAgentsDir,
-					results,
-				});
+				(results: SingleResult[]): SubagentDetails => {
+					// Keep live registry in sync for the viewer overlay (non-blocking).
+					if (results.length > 0) {
+						liveRuns.syncFromResults(toolCallId, mode, results);
+					}
+					return {
+						mode,
+						agentScope,
+						projectAgentsDir: discovery.projectAgentsDir,
+						packageAgentsDir: discovery.packageAgentsDir,
+						results,
+					};
+				};
+
+			const startLive = (mode: "single" | "parallel" | "chain", seeds: Array<{ agent: string; task: string; step?: number }>) => {
+				liveRuns.startRun(toolCallId, mode, seeds);
+			};
 
 			if (modeCount !== 1) {
 				const available = agents.map((a) => `${a.name} (${a.source})`).join(", ") || "none";
@@ -584,6 +612,10 @@ export default function (pi: ExtensionAPI) {
 			if (params.chain && params.chain.length > 0) {
 				const results: SingleResult[] = [];
 				let previousOutput = "";
+				startLive(
+					"chain",
+					params.chain.map((step, i) => ({ agent: step.agent, task: step.task, step: i + 1 })),
+				);
 
 				for (let i = 0; i < params.chain.length; i++) {
 					const step = params.chain[i];
@@ -619,6 +651,7 @@ export default function (pi: ExtensionAPI) {
 					const isError = isFailedResult(result);
 					if (isError) {
 						const errorMsg = getResultOutput(result);
+						liveRuns.finishRun(toolCallId, "failed");
 						return {
 							content: [{ type: "text", text: `Chain stopped at step ${i + 1} (${step.agent}): ${errorMsg}` }],
 							details: makeDetails("chain")(results),
@@ -627,6 +660,7 @@ export default function (pi: ExtensionAPI) {
 					}
 					previousOutput = getFinalOutput(result.messages);
 				}
+				liveRuns.finishRun(toolCallId, "completed");
 				return {
 					content: [{ type: "text", text: getFinalOutput(results[results.length - 1].messages) || "(no output)" }],
 					details: makeDetails("chain")(results),
@@ -646,6 +680,10 @@ export default function (pi: ExtensionAPI) {
 					};
 
 				const allResults: SingleResult[] = new Array(params.tasks.length);
+				startLive(
+					"parallel",
+					params.tasks.map((t) => ({ agent: t.agent, task: t.task })),
+				);
 
 				for (let i = 0; i < params.tasks.length; i++) {
 					allResults[i] = {
@@ -658,6 +696,7 @@ export default function (pi: ExtensionAPI) {
 						usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, contextTokens: 0, turns: 0 },
 					};
 				}
+				liveRuns.syncFromResults(toolCallId, "parallel", allResults);
 
 				const emitParallelUpdate = () => {
 					if (onUpdate) {
@@ -703,6 +742,7 @@ export default function (pi: ExtensionAPI) {
 						: "completed";
 					return `### [${r.agent}] ${status}\n\n${output}`;
 				});
+				liveRuns.finishRun(toolCallId, successCount === results.length ? "completed" : "failed");
 				return {
 					content: [
 						{
@@ -715,6 +755,7 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			if (params.agent && params.task) {
+				startLive("single", [{ agent: params.agent, task: params.task }]);
 				const result = await runSingleAgent(
 					ctx.cwd,
 					agents,
@@ -730,12 +771,14 @@ export default function (pi: ExtensionAPI) {
 				const isError = isFailedResult(result);
 				if (isError) {
 					const errorMsg = getResultOutput(result);
+					liveRuns.finishRun(toolCallId, "failed");
 					return {
 						content: [{ type: "text", text: `Agent ${result.stopReason || "failed"}: ${errorMsg}` }],
 						details: makeDetails("single")([result]),
 						isError: true,
 					};
 				}
+				liveRuns.finishRun(toolCallId, "completed");
 				return {
 					content: [{ type: "text", text: getFinalOutput(result.messages) || "(no output)" }],
 					details: makeDetails("single")([result]),
@@ -873,6 +916,7 @@ export default function (pi: ExtensionAPI) {
 
 				let text = `${icon} ${theme.fg("toolTitle", theme.bold(r.agent))}${theme.fg("muted", ` (${r.agentSource})`)}`;
 				if (isError && r.stopReason) text += ` ${theme.fg("error", `[${r.stopReason}]`)}`;
+				text += `\n${theme.fg("dim", "Viewer: /subagent-view · Ctrl+Shift+S")}`;
 				if (isError && r.errorMessage) text += `\n${theme.fg("error", `Error: ${r.errorMessage}`)}`;
 				else if (displayItems.length === 0) text += `\n${theme.fg("muted", "(no output)")}`;
 				else {
@@ -990,7 +1034,7 @@ export default function (pi: ExtensionAPI) {
 					? `${successCount + failCount}/${details.results.length} done, ${running} running`
 					: `${successCount}/${details.results.length} tasks`;
 
-				if (expanded && !isRunning) {
+				if (expanded) {
 					const container = new Container();
 					container.addChild(
 						new Text(
@@ -999,9 +1043,17 @@ export default function (pi: ExtensionAPI) {
 							0,
 						),
 					);
+					container.addChild(
+						new Text(theme.fg("dim", "Viewer: /subagent-view or Ctrl+Shift+S (does not stop tasks)"), 0, 0),
+					);
 
 					for (const r of details.results) {
-						const rIcon = isFailedResult(r) ? theme.fg("error", "✗") : theme.fg("success", "✓");
+						const rIcon =
+							r.exitCode === -1
+								? theme.fg("warning", "⏳")
+								: isFailedResult(r)
+									? theme.fg("error", "✗")
+									: theme.fg("success", "✓");
 						const displayItems = getDisplayItems(r.messages);
 						const finalOutput = getFinalOutput(r.messages);
 
@@ -1026,6 +1078,8 @@ export default function (pi: ExtensionAPI) {
 						if (finalOutput) {
 							container.addChild(new Spacer(1));
 							container.addChild(new Markdown(finalOutput.trim(), 0, 0, mdTheme));
+						} else if (r.exitCode === -1) {
+							container.addChild(new Text(theme.fg("muted", "(running…)"), 0, 0));
 						}
 
 						const taskUsage = formatUsageStats(r.usage, r.model, r.thinking);
@@ -1041,6 +1095,7 @@ export default function (pi: ExtensionAPI) {
 				}
 
 				let text = `${icon} ${theme.fg("toolTitle", theme.bold("parallel "))}${theme.fg("accent", status)}`;
+				text += `\n${theme.fg("dim", "Viewer: /subagent-view · Ctrl+Shift+S")}`;
 				for (const r of details.results) {
 					const rIcon =
 						r.exitCode === -1
@@ -1058,7 +1113,7 @@ export default function (pi: ExtensionAPI) {
 					const usageStr = formatUsageStats(aggregateUsage(details.results));
 					if (usageStr) text += `\n\n${theme.fg("dim", `Total: ${usageStr}`)}`;
 				}
-				if (!expanded) text += `\n${theme.fg("muted", "(Ctrl+O to expand)")}`;
+				text += `\n${theme.fg("muted", "(Ctrl+O to expand)")}`;
 				return new Text(text, 0, 0);
 			}
 

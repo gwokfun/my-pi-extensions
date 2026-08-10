@@ -8,6 +8,7 @@ Delegate tasks to specialized subagents with isolated context windows. Part of `
 - **Bundled agents**: ship with the extension (no manual symlink required)
 - **Model + thinking config**: per-agent frontmatter defaults and per-call overrides
 - **Streaming output**: tool calls and progress as they happen
+- **Fullscreen viewer (Scheme B)**: open a live overlay to watch one task's timeline
 - **Parallel / chain modes**: concurrent tasks or sequential `{previous}` handoff
 - **Usage tracking**: turns, tokens, cost, model, thinking level
 
@@ -15,8 +16,10 @@ Delegate tasks to specialized subagents with isolated context windows. Part of `
 
 ```text
 extensions/subagent/
-├── index.ts           # tool entry
+├── index.ts           # tool entry + command/shortcut
 ├── agents.ts          # discovery + frontmatter parsing
+├── live-state.ts      # live run registry for the viewer
+├── viewer.ts          # fullscreen overlay viewer
 ├── agents/            # package-bundled agent definitions
 │   ├── default.md
 │   ├── explorer.md
@@ -27,6 +30,37 @@ extensions/subagent/
 ```
 
 Package-level workflow prompts live in `../../prompts/`.
+
+## Live viewer (fullscreen overlay)
+
+While a subagent run is active (or after the latest run finished, still in memory):
+
+| Action | How |
+|--------|-----|
+| Open viewer | `/subagent-view` or **Ctrl+Shift+S** |
+| Switch task | `j` / `k` (or `1`–`9`) |
+| Scroll timeline | PgUp / PgDn (or Ctrl+U / Ctrl+D) |
+| Close | **Esc** or **q** |
+
+Closing the viewer **does not** abort child processes — subagents keep running.
+
+```text
+╔════ Subagent Viewer · parallel · ⏳ running ════╗
+║ ›1 explorer ⏳                                   ║
+║  2 explorer ✓                                    ║
+║ ── timeline ──                                   ║
+║ → read …                                         ║
+║ → grep …                                         ║
+║ text: …                                          ║
+╚══════════════════════════════════════════════════╝
+```
+
+**Notes:**
+
+- Updates are **event-level** (tool/message boundaries from JSON mode), not token-by-token.
+- Overlay API is experimental in pi; if the viewer fails to open, the tool row still works.
+- Requires interactive TUI (`ctx.mode === "tui"`).
+- Only one viewer instance at a time; re-open after Esc.
 
 ## Agents
 
