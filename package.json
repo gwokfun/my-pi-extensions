@@ -11,6 +11,10 @@
     "prompts": ["./prompts"],
     "themes": ["./themes"]
   },
+  "scripts": {
+    "test": "node --experimental-strip-types --test \"extensions/**/*.test.ts\"",
+    "smoke": "node --experimental-strip-types --test \"scripts/smoke/**/*.test.mjs\""
+  },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*",
