@@ -1,0 +1,19 @@
+import assert from "node:assert/strict";
+import { access, readdir, readFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const packageJson = JSON.parse(await readFile(resolve(packageRoot, "package.json"), "utf8"));
+
+assert.equal(packageJson.pi?.extensions?.includes("./extensions"), true);
+
+const extensionRoot = resolve(packageRoot, "extensions");
+const extensionNames = (await readdir(extensionRoot, { withFileTypes: true }))
+	.filter((entry) => entry.isDirectory())
+	.map((entry) => entry.name);
+
+assert.ok(extensionNames.length > 0, "expected at least one extension");
+for (const name of extensionNames) {
+	await access(resolve(extensionRoot, name, "index.ts"));
+}

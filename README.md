@@ -16,6 +16,7 @@ themes/       # *.json themes
 | Plugin | Path | What it does |
 |--------|------|----------------|
 | **subagent** | `extensions/subagent/` | Spawn specialized subagents (explorer / planner / worker / reviewer / default) with model + thinking config; `/subagent-view` or Ctrl+Shift+S opens a live fullscreen overlay |
+| **openai-remote-compaction** | `extensions/openai-remote-compaction/` | Uses Responses `/compact` for GPT models and falls back to Pi native compaction on every unsupported or failed request |
 
 Add new plugins as sibling directories under `extensions/` (for example `extensions/notify/`). Keep each plugin self-contained; extract a shared `lib/` only when two or more plugins need the same code.
 
@@ -52,6 +53,15 @@ After install/reload, the main agent can call the `subagent` tool, or you can us
 - `/subagent-view` or **Ctrl+Shift+S** — fullscreen live viewer while a subagent runs (Esc/q closes; does not stop children)
 
 See [extensions/subagent/README.md](extensions/subagent/README.md) for agent tables, model/thinking configuration, and discovery rules.
+
+### Test
+
+```bash
+npm test         # all deterministic extension tests
+npm run smoke    # all package/plugin smoke tests; no API key or network
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the test and smoke-test contract for new plugins.
 
 ## Notes
 
