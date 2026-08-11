@@ -18,6 +18,7 @@ themes/       # *.json themes
 | **subagent** | `extensions/subagent/` | Spawn specialized subagents (explorer / planner / worker / reviewer / default) with model + thinking config; `/subagent-view` or Ctrl+Shift+S opens a live fullscreen overlay |
 | **gpt-fast-mode** | `extensions/gpt-fast-mode/` | Requests `service_tier: priority` for GPT-named models via `/fast`, `--fast`, and subagent environment hand-off |
 | **openai-remote-compaction** | `extensions/openai-remote-compaction/` | Uses Responses `/compact` for GPT models and falls back to Pi native compaction on every unsupported or failed request |
+| **pi-plan-mode** | `extensions/pi-plan-mode/` | Adds a read-only planning lifecycle with session-local `plan.md`, a large Markdown approval overlay, revision feedback, and explicit approval/abandon gates |
 
 Add new plugins as sibling directories under `extensions/` (for example `extensions/notify/`). Keep each plugin self-contained; extract a shared `lib/` only when two or more plugins need the same code.
 
@@ -57,6 +58,23 @@ After install/reload, the main agent can call the `subagent` tool, or you can us
 - `/subagent-view` or **Ctrl+Shift+S** — fullscreen live viewer while a subagent runs (Esc/q closes; does not stop children)
 
 See [extensions/subagent/README.md](extensions/subagent/README.md) for agent tables, model/thinking configuration, and discovery rules.
+
+### Plan Mode quick start
+
+```text
+/plan plan the requested change
+```
+
+The agent can inspect the repository and update the session-local `plan.md`, but project writes, shell commands, subagents, and unknown tools remain blocked. When planning is complete, the plugin opens a large Markdown review overlay:
+
+- `a` — approve and restore normal tools after the current run settles
+- `r` — enter revision feedback and return the agent to planning
+- `q` — confirm abandonment while preserving the plan artifact
+- `Esc` — close the overlay with approval still pending
+
+Use `/plan review` to reopen a pending decision, `/view-plan` for a read-only preview, `/plan status` for the lifecycle state and artifact path, or `/plan off` to abandon from an idle TUI. Approval never starts implementation automatically.
+
+See [extensions/pi-plan-mode/README.md](extensions/pi-plan-mode/README.md) for lifecycle, persistence, and safety details.
 
 ### Test
 
