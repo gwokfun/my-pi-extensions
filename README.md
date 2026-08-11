@@ -16,6 +16,7 @@ themes/       # *.json themes
 | Plugin | Path | What it does |
 |--------|------|----------------|
 | **subagent** | `extensions/subagent/` | Spawn specialized subagents (explorer / planner / worker / reviewer / default) with model + thinking config; `/subagent-view` or Ctrl+Shift+S opens a live fullscreen overlay |
+| **gpt-fast-mode** | `extensions/gpt-fast-mode/` | Requests `service_tier: priority` for GPT-named models via `/fast`, `--fast`, and subagent environment hand-off |
 | **openai-remote-compaction** | `extensions/openai-remote-compaction/` | Uses Responses `/compact` for GPT models and falls back to Pi native compaction on every unsupported or failed request |
 
 Add new plugins as sibling directories under `extensions/` (for example `extensions/notify/`). Keep each plugin self-contained; extract a shared `lib/` only when two or more plugins need the same code.
