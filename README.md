@@ -81,6 +81,7 @@ See [extensions/pi-plan-mode/README.md](extensions/pi-plan-mode/README.md) for l
 ```bash
 npm test         # all deterministic extension tests
 npm run smoke    # all package/plugin smoke tests; no API key or network
+npm run verify:stock-pi  # load every extension entrypoint through the installed stock Pi loader
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the test and smoke-test contract for new plugins.
@@ -89,4 +90,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the test and smoke-test contract for 
 
 - Extensions run with full local permissions. Review the source before installing; this repository and its npm package are public.
 - Runtime deps for extensions go in `dependencies`. Pi core packages stay in `peerDependencies`.
+- Extensions use documented Pi package roots only; no Pi main-program Loader patch is required.
 - Optional package filters in settings can enable/disable individual extensions without removing the package.

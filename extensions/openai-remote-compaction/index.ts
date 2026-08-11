@@ -1,6 +1,4 @@
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import type { Context } from "@earendil-works/pi-ai";
-import { convertResponsesMessages } from "@earendil-works/pi-ai/api/openai-responses-shared";
 import {
 	convertToLlm,
 	type ExtensionAPI,
@@ -9,8 +7,6 @@ import {
 	type SessionEntry,
 } from "@earendil-works/pi-coding-agent";
 import {
-	compactEndpoint,
-	extractRemoteSummary,
 	isRecord,
 	isRemoteCompactionModel,
 	isRemoteDetails,
@@ -22,8 +18,9 @@ import {
 	replaceCompactionInput,
 	sameModel,
 } from "./logic.ts";
+import { requestRemoteCompaction, type ResolvedAuth } from "./remote-request.ts";
+import { serializeResponsesInput } from "./responses-input.ts";
 
-const COMPACT_TIMEOUT_MS = 120_000;
 const REQUEST_FIELDS = [
 	"tools",
 	"parallel_tool_calls",
@@ -39,10 +36,7 @@ function latestRemoteCompaction(entries: SessionEntry[]): RemoteCompactionDetail
 }
 
 function responseInputForMessages(model: ResponsesModel, messages: AgentMessage[]): unknown[] {
-	const context: Context = { messages: convertToLlm(messages) };
-	return convertResponsesMessages(model, context, new Set(["openai", "openai-codex", model.provider]), {
-		includeSystemPrompt: false,
-	});
+	return serializeResponsesInput(model, convertToLlm(messages));
 }
 
 function previousSummaryInput(summary: string): JsonObject {
@@ -78,8 +72,6 @@ function captureRequestFields(cache: Map<string, JsonObject>, sessionId: string,
 	cache.set(sessionId, fields);
 }
 
-type ResolvedAuth = { baseUrl: string; headers: Headers };
-
 async function resolveAuth(ctx: ExtensionContext, model: ResponsesModel): Promise<ResolvedAuth> {
 	const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
 	if (!auth.ok) throw new Error(auth.error);
@@ -96,40 +88,6 @@ async function resolveAuth(ctx: ExtensionContext, model: ResponsesModel): Promis
 	}
 
 	return { baseUrl: normalizeBaseUrl(auth.baseUrl ?? model.baseUrl), headers };
-}
-
-async function requestRemoteCompaction(
-	model: ResponsesModel,
-	instructions: string,
-	input: unknown[],
-	auth: ResolvedAuth,
-	requestFields: JsonObject | undefined,
-	signal: AbortSignal,
-): Promise<{ output: unknown[]; summary: string }> {
-	const fields = { ...(requestFields ?? {}) };
-	if (model.api === "openai-codex-responses" && typeof fields.parallel_tool_calls !== "boolean") {
-		fields.parallel_tool_calls = true;
-	}
-	const body: JsonObject = {
-		model: model.id,
-		input,
-		instructions,
-		...fields,
-	};
-	const requestSignal = AbortSignal.any([signal, AbortSignal.timeout(COMPACT_TIMEOUT_MS)]);
-	const response = await fetch(compactEndpoint(model, auth.baseUrl), {
-		method: "POST",
-		headers: auth.headers,
-		body: JSON.stringify(body),
-		signal: requestSignal,
-	});
-	if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-	const parsed: unknown = await response.json();
-	if (!isRecord(parsed) || !Array.isArray(parsed.output)) throw new Error("Invalid compact response");
-	const summary = extractRemoteSummary(parsed.output);
-	if (!summary) throw new Error("Compact response has no readable summary");
-	return { output: parsed.output, summary };
 }
 
 function notifyFallback(ctx: ExtensionContext, error: unknown): void {

@@ -38,6 +38,7 @@
   "scripts": {
     "test": "node --experimental-strip-types --test \"extensions/**/*.test.ts\"",
     "smoke": "node --experimental-strip-types --test \"scripts/smoke/**/*.test.mjs\"",
+    "verify:stock-pi": "node scripts/verify-stock-pi.mjs",
     "check:package": "node scripts/check-package.mjs",
     "prepublishOnly": "npm test && npm run smoke && npm run check:package"
   },
