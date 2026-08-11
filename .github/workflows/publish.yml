@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   publish:
@@ -30,5 +31,3 @@ jobs:
           node -e 'const fs = require("node:fs"); const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")); const expected = "v" + pkg.version; if (process.env.RELEASE_TAG !== expected) { console.error(`Expected release tag ${expected}, got ${process.env.RELEASE_TAG}`); process.exit(1); }'
       - name: Publish to npm
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
