@@ -1,4 +1,4 @@
-# my-pi-extensions
+# @gwokfun/my-pi-extensions
 
 Personal [pi](https://pi.dev) package: extensions, skills, prompt templates, and themes.
 
@@ -26,11 +26,14 @@ Add new plugins as sibling directories under `extensions/` (for example `extensi
 ## Install
 
 ```bash
-# global
-pi install git:github.com/gwokfun/my-pi-extensions@main
+# npm, global
+pi install npm:@gwokfun/my-pi-extensions
 
-# project-local
-pi install -l git:github.com/gwokfun/my-pi-extensions@main
+# npm, project-local
+pi install -l npm:@gwokfun/my-pi-extensions
+
+# git source
+pi install git:github.com/gwokfun/my-pi-extensions@main
 
 # local path (this checkout)
 pi install ./my-pi-extensions
@@ -66,6 +69,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the test and smoke-test contract for 
 
 ## Notes
 
-- Extensions run with full local permissions. Keep this repo private if it contains sensitive automation.
+- Extensions run with full local permissions. Review the source before installing; this repository and its npm package are public.
 - Runtime deps for extensions go in `dependencies`. Pi core packages stay in `peerDependencies`.
 - Optional package filters in settings can enable/disable individual extensions without removing the package.
