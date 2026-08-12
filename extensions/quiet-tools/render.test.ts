@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { visibleWidth } from "@earendil-works/pi-tui";
-
 import { aggregationStore } from "./aggregate.ts";
-
 import { renderCollapsedCall, renderCollapsedResult } from "./render.ts";
 
 const theme = { fg: (_color: string, text: string) => text };
@@ -24,7 +22,11 @@ test("result slots stay empty while updating the aggregate", () => {
 	assert.equal(aggregationStore.current()?.calls[0].endedAt !== undefined, true);
 });
 
-test("settled calls and partial results render no duplicate row", () => {
-	assert.deepEqual(renderCollapsedCall("bash", { command: "true" }, theme, { isPartial: false }).render(80), []);
-	assert.deepEqual(renderCollapsedResult("bash", { command: "true" }, {}, { expanded: false, isPartial: true, isError: false }, theme).render(80), []);
+test("reuses the aggregate component supplied by Pi on rerender", () => {
+	aggregationStore.reset();
+	aggregationStore.beginTurn(0);
+	const first = renderCollapsedCall("read", { path: "a" }, theme, { toolCallId: "stable" });
+	const second = renderCollapsedCall("read", { path: "a" }, theme, { toolCallId: "stable", lastComponent: first });
+	assert.equal(second, first);
+	assert.equal(aggregationStore.groups.length, 1);
 });

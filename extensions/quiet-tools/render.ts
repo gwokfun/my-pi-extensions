@@ -10,6 +10,11 @@ class AggregateView implements Component {
 	private group: ToolGroup;
 	private theme: any;
 	constructor(group: ToolGroup, theme: any) { this.group = group; this.theme = theme; }
+	update(group: ToolGroup, theme: any, requestRender?: () => void): void {
+		this.group = group;
+		this.theme = theme;
+		this.requestRender = requestRender;
+	}
 	render(width: number): string[] {
 		if (!this.unsubscribe && this.requestRender) this.unsubscribe = aggregationStore.onChange(this.requestRender);
 		return groupLines(this.group).map(({ text, error }, index) => {
@@ -19,17 +24,16 @@ class AggregateView implements Component {
 		});
 	}
 	invalidate(): void { this.unsubscribe?.(); this.unsubscribe = undefined; }
-	setRequestRender(requestRender: () => void): void { this.requestRender = requestRender; }
 }
 
-interface RenderContext { toolCallId?: string; isPartial?: boolean; invalidate?: () => void }
+interface RenderContext { toolCallId?: string; isPartial?: boolean; invalidate?: () => void; lastComponent?: unknown }
 
 export function renderCollapsedCall(name: string, args: unknown, theme: any, context: RenderContext = {}): Component {
 	const id = context.toolCallId ?? `${name}-${Date.now()}`;
 	const { group, anchor } = aggregationStore.upsert(id, name, args);
 	if (!anchor) return new Empty();
-	const component = new AggregateView(group, theme);
-	component.setRequestRender(() => context.invalidate?.());
+	const component = context.lastComponent instanceof AggregateView ? context.lastComponent : new AggregateView(group, theme);
+	component.update(group, theme, () => context.invalidate?.());
 	return component;
 }
 
@@ -40,5 +44,4 @@ export function renderCollapsedResult(name: string, args: unknown, result: unkno
 		if (!options.isPartial) aggregationStore.settle(id, result, options.isError);
 	}
 	return new Empty();
-
 }

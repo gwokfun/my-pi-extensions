@@ -16,7 +16,6 @@ export function withCollapsedRendering<T extends ToolDefinition>(tool: T, adapte
 		renderShell: "self",
 		renderCall: (args, theme, context) => renderCollapsedCall(tool.name, args, theme, context),
 		renderResult: (result, options, theme, context) => renderCollapsedResult(tool.name, context.args, result, options, theme, context),
-
 	} as T;
 }
 

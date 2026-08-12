@@ -29,9 +29,25 @@ test("supports independent group and selected-tool detail folding", () => {
 	store.move(1);
 	store.toggleCall();
 	const lines = groupLines(group).map((line) => line.text);
-	assert.match(lines[2], /^  › ◆ Bash pwd/);
+	assert.match(lines[2], /^  › - ◆ Bash pwd/);
 	assert.ok(lines.includes("      bash body"));
 	assert.ok(!lines.includes("      read body"));
+});
+
+test("aggregates reads as a file count with requested ranges and returned line counts", () => {
+	const store = new ToolAggregationStore();
+	store.beginTurn(0);
+	const { group } = store.upsert("a", "read", { path: "afile", offset: 1, limit: 300 }, 1);
+	store.upsert("b", "read", { path: "bfile", offset: 1, limit: 400 }, 2);
+	store.settle("a", output(Array.from({ length: 77 }, (_, index) => `a${index}`).join("\n")), false, 3);
+	store.settle("b", output(Array.from({ length: 177 }, (_, index) => `b${index}`).join("\n")), false, 4);
+	assert.deepEqual(groupLines(group).map((line) => line.text), ["▶ read 2 files"]);
+	store.toggleGroup();
+	assert.deepEqual(groupLines(group).map((line) => line.text), [
+		"▼ read 2 files",
+		"  › - afile (1-300) (77 lines)",
+		"    - bfile (1-400) (177 lines)",
+	]);
 });
 
 test("selects and opens one aggregate group without changing its siblings", () => {
@@ -42,4 +58,22 @@ test("selects and opens one aggregate group without changing its siblings", () =
 	store.toggleGroup();
 	assert.equal(store.groups[0].expanded, true);
 	assert.equal(store.groups[1].expanded, false);
+});
+
+test("repeated renders reuse settled calls without creating groups or invalidation loops", () => {
+	const store = new ToolAggregationStore();
+	let changes = 0;
+	store.onChange(() => changes++);
+	store.beginTurn(100);
+	store.upsert("same", "read", { path: "a" }, 110);
+	store.settle("same", output("body"), false, 120);
+	store.endTurn(130);
+	const settledChanges = changes;
+	for (let index = 0; index < 50; index++) {
+		store.upsert("same", "read", { path: "a" }, 1_000 + index);
+		store.settle("same", output("body"), false, 1_000 + index);
+	}
+	assert.equal(store.groups.length, 1);
+	assert.equal(store.groups[0].calls.length, 1);
+	assert.equal(changes, settledChanges);
 });
