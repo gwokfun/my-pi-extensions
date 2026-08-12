@@ -19,7 +19,7 @@ themes/       # *.json themes
 | **gpt-fast-mode** | `extensions/gpt-fast-mode/` | Requests `service_tier: priority` for GPT-named models via `/fast`, `--fast`, and subagent environment hand-off |
 | **openai-remote-compaction** | `extensions/openai-remote-compaction/` | Uses Responses `/compact` for GPT models and falls back to Pi native compaction on every unsupported or failed request |
 | **pi-plan-mode** | `extensions/pi-plan-mode/` | Adds a read-only planning lifecycle with session-local `plan.md`, a large Markdown approval overlay, revision feedback, and explicit approval/abandon gates |
-
+| **ask-user-questions** | `extensions/ask-user-questions/` | Adds an `ask_user_questions` tool with single/multi-select choices, recommended options, custom answers, progress navigation, and a polished review overlay |
 | **quiet-tools** | `extensions/quiet-tools/` | Groups each turn's tools into a Grok Build-style two-level fold with per-tool selection and details |
 
 Add new plugins as sibling directories under `extensions/` (for example `extensions/notify/`). Keep each plugin self-contained; extract a shared `lib/` only when two or more plugins need the same code.
@@ -77,6 +77,12 @@ The agent can inspect the repository and update the session-local `plan.md`, but
 Use `/plan review` to reopen a pending decision, `/view-plan` for a read-only preview, `/plan status` for the lifecycle state and artifact path, or `/plan off` to abandon from an idle TUI. Approval never starts implementation automatically.
 
 See [extensions/pi-plan-mode/README.md](extensions/pi-plan-mode/README.md) for lifecycle, persistence, and safety details.
+
+### Ask User Questions
+
+The `ask_user_questions` tool lets the agent collect one to three decisions in one Pi-native overlay. It supports single-select and multi-select questions, option descriptions, recommended badges, a custom-answer editor, keyboard shortcuts, and a final review page. The tool only opens in interactive TUI mode and returns ordered structured answers to the agent.
+
+See [extensions/ask-user-questions/README.md](extensions/ask-user-questions/README.md) for the input schema, controls, and result contract.
 
 ### Quiet Tools quick start
 
