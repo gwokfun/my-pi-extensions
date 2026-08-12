@@ -5,20 +5,21 @@ import { formatTool, registerToolAdapter, safeStringify } from "./format.ts";
 const result = (text: string, details?: unknown) => ({ content: [{ type: "text", text }], details });
 
 test("bash reports success, failure, streaming, and truncation", () => {
-	assert.match(formatTool("bash", { command: "true" }, result("ok", { exitCode: 0 })).line, /^✓ \$ true · done/);
+	assert.match(formatTool("bash", { command: "true" }, result("ok", { exitCode: 0 })).line, /^◆ Bash true · done/);
 	const failed = formatTool("bash", { command: "false" }, result("exit code: 7", { exitCode: 7 }));
 	assert.equal(failed.success, false);
 	assert.match(failed.line, /exit 7/);
-	assert.match(formatTool("bash", { command: "sleep 1" }, result(""), { isPartial: true }).line, /^◌ .*running/);
+	assert.match(formatTool("bash", { command: "sleep 1" }, result(""), { isPartial: true }).line, /^◇ .*running/);
 	assert.match(formatTool("bash", { command: "seq 99" }, result("...", { exitCode: 0, truncation: { truncated: true } })).line, /truncated/);
 });
 
 test("built-in file and search adapters produce concise summaries", () => {
-	assert.match(formatTool("edit", { path: "a.ts" }, result("ok")).line, /edit a\.ts · updated/);
-	assert.match(formatTool("write", { path: "b.ts" }, result("ok")).line, /write b\.ts · written/);
+	assert.match(formatTool("read", { path: "README.md", offset: 2 }, result("a\nb", { lineCount: 2, totalLines: 170 })).line, /Read README\.md · 2–3 of 170/);
+	assert.match(formatTool("edit", { path: "a.ts" }, result("ok")).line, /Edit a\.ts · updated/);
+	assert.match(formatTool("write", { path: "b.ts" }, result("ok")).line, /Write b\.ts · written/);
 	assert.match(formatTool("find", { path: ".", pattern: "*.ts" }, result("a.ts\nb.ts")).line, /2 matches/);
-	assert.match(formatTool("grep", { path: "src", pattern: "todo" }, result("a:1\nb:2")).line, /grep todo src · 2 matches/);
-	assert.match(formatTool("ls", { path: "src" }, result("a\nb")).line, /ls src · 2 entries/);
+	assert.match(formatTool("grep", { path: "src", pattern: "todo" }, result("a:1\nb:2")).line, /Grep todo src · 2 matches/);
+	assert.match(formatTool("ls", { path: "src" }, result("a\nb")).line, /List src · 2 entries/);
 });
 
 test("errors are unsuccessful and retain expandable content", () => {

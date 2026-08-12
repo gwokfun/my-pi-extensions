@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { renderCollapsedResult } from "./render.ts";
+import { renderCollapsedCall, renderCollapsedResult } from "./render.ts";
 
 const theme = { fg: (_color: string, text: string) => text };
 
@@ -15,4 +15,9 @@ test("narrow collapsed results remain one truncated line", () => {
 test("error output expands by default", () => {
 	const component = renderCollapsedResult("unknown", {}, { content: [{ type: "text", text: "bad details" }] }, { expanded: false, isPartial: false, isError: true }, theme);
 	assert.ok(component.render(80).length > 1);
+});
+
+test("settled calls and partial results render no duplicate row", () => {
+	assert.deepEqual(renderCollapsedCall("bash", { command: "true" }, theme, { isPartial: false }).render(80), []);
+	assert.deepEqual(renderCollapsedResult("bash", { command: "true" }, {}, { expanded: false, isPartial: true, isError: false }, theme).render(80), []);
 });
