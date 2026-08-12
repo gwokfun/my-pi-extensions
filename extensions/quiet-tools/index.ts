@@ -1,5 +1,5 @@
 import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-agent";
-import { createBashTool, createEditTool, createFindTool, createGrepTool, createLsTool, createWriteTool } from "@earendil-works/pi-coding-agent";
+import { createBashTool, createEditTool, createFindTool, createGrepTool, createLsTool, createReadTool, createWriteTool } from "@earendil-works/pi-coding-agent";
 import { Key } from "@earendil-works/pi-tui";
 import type { ToolCollapseAdapter } from "./format.ts";
 import { registerToolAdapter } from "./format.ts";
@@ -12,14 +12,15 @@ export function withCollapsedRendering<T extends ToolDefinition>(tool: T, adapte
 	if (adapter) registerToolAdapter(adapter);
 	return {
 		...tool,
-		renderCall: (args, theme) => renderCollapsedCall(tool.name, args, theme),
+		renderShell: "self",
+		renderCall: (args, theme, context) => renderCollapsedCall(tool.name, args, theme, context),
 		renderResult: (result, options, theme, context) => renderCollapsedResult(tool.name, context.args, result, options, theme),
 	} as T;
 }
 
 export default function quietTools(pi: ExtensionAPI): void {
 	const cwd = process.cwd();
-	const tools = [createBashTool(cwd), createEditTool(cwd), createWriteTool(cwd), createFindTool(cwd), createGrepTool(cwd), createLsTool(cwd)];
+	const tools = [createReadTool(cwd), createBashTool(cwd), createEditTool(cwd), createWriteTool(cwd), createFindTool(cwd), createGrepTool(cwd), createLsTool(cwd)];
 	for (const tool of tools) pi.registerTool(withCollapsedRendering(tool as ToolDefinition));
 
 	pi.registerShortcut(Key.ctrl("e"), {

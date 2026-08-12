@@ -17,13 +17,22 @@ class CompactText implements Component {
 	invalidate(): void {}
 }
 
-export function renderCollapsedCall(name: string, args: unknown, theme: any): Component {
+class Empty implements Component {
+	render(): string[] { return []; }
+	invalidate(): void {}
+}
+
+export function renderCollapsedCall(name: string, args: unknown, theme: any, context: { isPartial?: boolean } = {}): Component {
+	// Once a call settles, renderResult owns the row. This avoids the two-line
+	// pending/completed cards produced by the default Pi shell.
+	if (context.isPartial === false) return new Empty();
 	const view = formatTool(name, args, undefined, { isPartial: true });
-	return new CompactText(theme.fg("toolTitle", view.line));
+	return new CompactText(theme.fg("dim", view.line));
 }
 
 export function renderCollapsedResult(name: string, args: unknown, result: unknown, options: { expanded: boolean; isPartial: boolean; isError: boolean }, theme: any): Component {
 	const view = formatTool(name, args, result, options);
-	const color = options.isPartial ? "warning" : view.success ? "success" : "error";
-	return new CompactText(theme.fg(color, view.line), options.expanded || !view.success ? view.expanded : undefined);
+	if (options.isPartial) return new Empty();
+	const line = view.success ? theme.fg("muted", view.line) : theme.fg("error", view.line);
+	return new CompactText(line, options.expanded || !view.success ? view.expanded : undefined);
 }
