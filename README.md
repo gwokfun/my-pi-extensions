@@ -19,7 +19,7 @@ themes/       # *.json themes
 | **gpt-fast-mode** | `extensions/gpt-fast-mode/` | Requests `service_tier: priority` for GPT-named models via `/fast`, `--fast`, and subagent environment hand-off |
 | **openai-remote-compaction** | `extensions/openai-remote-compaction/` | Uses Responses `/compact` for GPT models and falls back to Pi native compaction on every unsupported or failed request |
 | **pi-plan-mode** | `extensions/pi-plan-mode/` | Adds a read-only planning lifecycle with session-local `plan.md`, a large Markdown approval overlay, revision feedback, and explicit approval/abandon gates |
-| **grok-tui** | `extensions/grok-tui/` | Opens a full-screen Grok-style structured transcript with selectable thinking/tool blocks, single/global folding, streaming updates, and prompt input |
+| **quiet-tools** | `extensions/quiet-tools/` | Re-renders built-in tools as compact, width-safe one-line summaries while delegating their execution unchanged |
 
 Add new plugins as sibling directories under `extensions/` (for example `extensions/notify/`). Keep each plugin self-contained; extract a shared `lib/` only when two or more plugins need the same code.
 
@@ -77,15 +77,11 @@ Use `/plan review` to reopen a pending decision, `/view-plan` for a read-only pr
 
 See [extensions/pi-plan-mode/README.md](extensions/pi-plan-mode/README.md) for lifecycle, persistence, and safety details.
 
-### Grok TUI quick start
+### Quiet Tools quick start
 
-Run `/grok-tui` to open the structured transcript view. The view mirrors the current session and continues receiving message/tool events while it is open. Use `Esc` to return to the native Pi screen.
+After install/reload, built-in bash and file/search tools render as a status icon plus compact argument and result summaries. Running, successful, and failed calls use `◌`, `✓`, and `✗`; failures expose their details, and narrow terminals truncate the folded view to one line. Press **Ctrl+E** to toggle expanded tool output.
 
-- `↑/↓` — select a content block when the prompt is empty
-- `←/→` — collapse/expand the selected thinking or tool block
-- `Enter` — toggle the selected block, or submit a prompt when text is entered
-- `Ctrl+O` — toggle all tool blocks; `Ctrl+T` — toggle all thinking blocks
-- `PgUp/PgDn`, `Home/End` — scroll; `End` resumes following output
+The plugin delegates the public Pi tool factories and changes rendering only. Unknown extension tools keep their real definitions and receive a safe JSON/text fallback only when their owner opts in with `withCollapsedRendering(tool, adapter)`; see [extensions/quiet-tools/README.md](extensions/quiet-tools/README.md) for a `web_search` adapter example. To fold thinking, explicitly configure `hideThinkingBlock: true`; the plugin never rewrites user settings.
 
 ### Test
 
