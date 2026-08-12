@@ -19,6 +19,7 @@ themes/       # *.json themes
 | **gpt-fast-mode** | `extensions/gpt-fast-mode/` | Requests `service_tier: priority` for GPT-named models via `/fast`, `--fast`, and subagent environment hand-off |
 | **openai-remote-compaction** | `extensions/openai-remote-compaction/` | Uses Responses `/compact` for GPT models and falls back to Pi native compaction on every unsupported or failed request |
 | **pi-plan-mode** | `extensions/pi-plan-mode/` | Adds a read-only planning lifecycle with session-local `plan.md`, a large Markdown approval overlay, revision feedback, and explicit approval/abandon gates |
+| **grok-tui** | `extensions/grok-tui/` | Opens a full-screen Grok-style structured transcript with selectable thinking/tool blocks, single/global folding, streaming updates, and prompt input |
 
 Add new plugins as sibling directories under `extensions/` (for example `extensions/notify/`). Keep each plugin self-contained; extract a shared `lib/` only when two or more plugins need the same code.
 
@@ -75,6 +76,16 @@ The agent can inspect the repository and update the session-local `plan.md`, but
 Use `/plan review` to reopen a pending decision, `/view-plan` for a read-only preview, `/plan status` for the lifecycle state and artifact path, or `/plan off` to abandon from an idle TUI. Approval never starts implementation automatically.
 
 See [extensions/pi-plan-mode/README.md](extensions/pi-plan-mode/README.md) for lifecycle, persistence, and safety details.
+
+### Grok TUI quick start
+
+Run `/grok-tui` to open the structured transcript view. The view mirrors the current session and continues receiving message/tool events while it is open. Use `Esc` to return to the native Pi screen.
+
+- `↑/↓` — select a content block when the prompt is empty
+- `←/→` — collapse/expand the selected thinking or tool block
+- `Enter` — toggle the selected block, or submit a prompt when text is entered
+- `Ctrl+O` — toggle all tool blocks; `Ctrl+T` — toggle all thinking blocks
+- `PgUp/PgDn`, `Home/End` — scroll; `End` resumes following output
 
 ### Test
 
