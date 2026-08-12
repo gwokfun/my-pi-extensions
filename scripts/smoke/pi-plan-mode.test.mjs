@@ -26,10 +26,12 @@ function firstBuiltPackage(candidates, marker) {
 
 test("pi-plan-mode registers and enforces its core offline lifecycle", () => {
 	const globalRoot = globalNodeModules();
+	const repositoryNodeModules = path.resolve(repositoryRoot, "node_modules");
 	const workspaceNodeModules = path.resolve(repositoryRoot, "../node_modules");
 	const agentRoot = firstBuiltPackage(
 		[
 			process.env.PI_PLAN_MODE_AGENT_PACKAGE,
+			path.join(repositoryNodeModules, "@earendil-works/pi-coding-agent"),
 			path.join(workspaceNodeModules, "@earendil-works/pi-coding-agent"),
 			globalRoot && path.join(globalRoot, "@earendil-works/pi-coding-agent"),
 		],
@@ -40,13 +42,19 @@ test("pi-plan-mode registers and enforces its core offline lifecycle", () => {
 	const tuiRoot = firstBuiltPackage(
 		[
 			path.join(agentNodeModules, "@earendil-works/pi-tui"),
+			path.join(repositoryNodeModules, "@earendil-works/pi-tui"),
 			path.join(agentPeerRoot, "@earendil-works/pi-tui"),
 			path.join(workspaceNodeModules, "@earendil-works/pi-tui"),
 		],
 		"dist/index.js",
 	);
 	const typeboxRoot = firstBuiltPackage(
-		[path.join(agentNodeModules, "typebox"), path.join(agentPeerRoot, "typebox"), path.join(workspaceNodeModules, "typebox")],
+		[
+			path.join(agentNodeModules, "typebox"),
+			path.join(repositoryNodeModules, "typebox"),
+			path.join(agentPeerRoot, "typebox"),
+			path.join(workspaceNodeModules, "typebox"),
+		],
 		"package.json",
 	);
 
