@@ -40,4 +40,5 @@ export function renderCollapsedResult(name: string, args: unknown, result: unkno
 		if (!options.isPartial) aggregationStore.settle(id, result, options.isError);
 	}
 	return new Empty();
+
 }
