@@ -1,7 +1,7 @@
 export interface ToolCollapseAdapter {
 	match: string | ((toolName: string) => boolean);
 	summarizeCall(args: unknown): string;
-	summarizeResult(result: unknown, isPartial: boolean): string;
+	summarizeResult(result: unknown, isPartial: boolean, args?: unknown): string;
 	expandedContent(args: unknown, result: unknown): string;
 	isSuccess?(result: unknown): boolean;
 }
@@ -62,6 +62,15 @@ function pathSummary(verb: string, args: unknown, extra = ""): string {
 	return `${verb} ${String(input.path ?? input.pattern ?? "")}${extra}`.trim();
 }
 
+function requestedRange(args: unknown, result: unknown): string {
+	const input = record(args);
+	const details = record(record(result).details);
+	const start = Number(input.offset ?? 1);
+	const returned = Number(details.lineCount ?? resultText(result).split("\n").filter(Boolean).length);
+	const total = Number(details.totalLines ?? details.lineCount ?? returned);
+	return returned > 0 ? `${start}–${Math.min(total, start + returned - 1)} of ${total}` : "empty";
+}
+
 function fallbackAdapter(name: string): ToolCollapseAdapter {
 	return {
 		match: name,
@@ -73,8 +82,14 @@ function fallbackAdapter(name: string): ToolCollapseAdapter {
 
 export const builtInAdapters: ToolCollapseAdapter[] = [
 	{
+		match: "read",
+		summarizeCall: (a) => `Read ${String(record(a).path ?? "")}`,
+		summarizeResult: (r, p, a) => p ? "reading" : requestedRange(a, r),
+		expandedContent: (_a, r) => resultText(r),
+	},
+	{
 		match: "bash",
-		summarizeCall: (args) => `$ ${String(record(args).command ?? "")}`,
+		summarizeCall: (args) => `Bash ${String(record(args).command ?? "")}`,
 		summarizeResult: (result, partial) => partial ? "running" : (() => {
 			const details = record(record(result).details);
 			const code = details.exitCode ?? resultText(result).match(/exit code:?\s*(-?\d+)/i)?.[1];
@@ -88,11 +103,11 @@ export const builtInAdapters: ToolCollapseAdapter[] = [
 			return code === undefined || Number(code) === 0;
 		},
 	},
-	{ match: "edit", summarizeCall: (a) => pathSummary("edit", a), summarizeResult: (_r, p) => p ? "editing" : "updated", expandedContent: (_a, r) => resultText(r) },
-	{ match: "write", summarizeCall: (a) => pathSummary("write", a), summarizeResult: (_r, p) => p ? "writing" : "written", expandedContent: (_a, r) => resultText(r) },
-	{ match: "find", summarizeCall: (a) => pathSummary("find", a, ` · ${String(record(a).pattern ?? "*")}`), summarizeResult: (r, p) => p ? "searching" : `${resultText(r).split("\n").filter(Boolean).length} matches`, expandedContent: (_a, r) => resultText(r) },
-	{ match: "grep", summarizeCall: (a) => `grep ${String(record(a).pattern ?? "")} ${String(record(a).path ?? ".")}`, summarizeResult: (r, p) => p ? "searching" : `${resultText(r).split("\n").filter(Boolean).length} matches`, expandedContent: (_a, r) => resultText(r) },
-	{ match: "ls", summarizeCall: (a) => pathSummary("ls", a), summarizeResult: (r, p) => p ? "listing" : `${resultText(r).split("\n").filter(Boolean).length} entries`, expandedContent: (_a, r) => resultText(r) },
+	{ match: "edit", summarizeCall: (a) => pathSummary("Edit", a), summarizeResult: (_r, p) => p ? "editing" : "updated", expandedContent: (_a, r) => resultText(r) },
+	{ match: "write", summarizeCall: (a) => pathSummary("Write", a), summarizeResult: (_r, p) => p ? "writing" : "written", expandedContent: (_a, r) => resultText(r) },
+	{ match: "find", summarizeCall: (a) => pathSummary("Find", a, ` · ${String(record(a).pattern ?? "*")}`), summarizeResult: (r, p) => p ? "searching" : `${resultText(r).split("\n").filter(Boolean).length} matches`, expandedContent: (_a, r) => resultText(r) },
+	{ match: "grep", summarizeCall: (a) => `Grep ${String(record(a).pattern ?? "")} ${String(record(a).path ?? ".")}`, summarizeResult: (r, p) => p ? "searching" : `${resultText(r).split("\n").filter(Boolean).length} matches`, expandedContent: (_a, r) => resultText(r) },
+	{ match: "ls", summarizeCall: (a) => pathSummary("List", a), summarizeResult: (r, p) => p ? "listing" : `${resultText(r).split("\n").filter(Boolean).length} entries`, expandedContent: (_a, r) => resultText(r) },
 ];
 
 for (const adapter of builtInAdapters) registerToolAdapter(adapter);
@@ -106,8 +121,8 @@ export interface RenderedTool {
 export function formatTool(name: string, args: unknown, result: unknown, options: { isPartial?: boolean; isError?: boolean } = {}): RenderedTool {
 	const adapter = findToolAdapter(name);
 	const success = !options.isError && (adapter.isSuccess?.(result) ?? true);
-	const icon = options.isPartial ? "◌" : success ? "✓" : "✗";
+	const icon = options.isPartial ? "◇" : success ? "◆" : "✗";
 	const call = oneLine(adapter.summarizeCall(args));
-	const summary = oneLine(adapter.summarizeResult(result, options.isPartial ?? false));
+	const summary = oneLine(adapter.summarizeResult(result, options.isPartial ?? false, args));
 	return { line: `${icon} ${call}${summary ? ` · ${summary}` : ""}`, expanded: adapter.expandedContent(args, result), success };
 }

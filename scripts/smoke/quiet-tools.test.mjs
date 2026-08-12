@@ -14,8 +14,9 @@ test("quiet-tools delegates built-ins and stays safe outside a TUI", async () =>
 		registerShortcut() {},
 		on(name, handler) { handlers.set(name, handler); },
 	});
-	assert.deepEqual(registrations.map((tool) => tool.name), ["bash", "edit", "write", "find", "grep", "ls"]);
+	assert.deepEqual(registrations.map((tool) => tool.name), ["read", "bash", "edit", "write", "find", "grep", "ls"]);
 	assert.ok(registrations.every((tool) => typeof tool.execute === "function" && tool.description && tool.parameters));
+	assert.ok(registrations.every((tool) => tool.renderShell === "self"), "compact tools must bypass Pi's colored Box shell");
 	let label = "";
 	assert.doesNotThrow(() => handlers.get("session_start")({}, { ui: { setHiddenThinkingLabel(value) { label = value; } } }));
 	assert.match(label, /thinking hidden/);

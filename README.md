@@ -19,7 +19,7 @@ themes/       # *.json themes
 | **gpt-fast-mode** | `extensions/gpt-fast-mode/` | Requests `service_tier: priority` for GPT-named models via `/fast`, `--fast`, and subagent environment hand-off |
 | **openai-remote-compaction** | `extensions/openai-remote-compaction/` | Uses Responses `/compact` for GPT models and falls back to Pi native compaction on every unsupported or failed request |
 | **pi-plan-mode** | `extensions/pi-plan-mode/` | Adds a read-only planning lifecycle with session-local `plan.md`, a large Markdown approval overlay, revision feedback, and explicit approval/abandon gates |
-| **quiet-tools** | `extensions/quiet-tools/` | Re-renders built-in tools as compact, width-safe one-line summaries while delegating their execution unchanged |
+| **quiet-tools** | `extensions/quiet-tools/` | Groups each turn's tools into a Grok Build-style two-level fold with per-tool selection and details |
 
 Add new plugins as sibling directories under `extensions/` (for example `extensions/notify/`). Keep each plugin self-contained; extract a shared `lib/` only when two or more plugins need the same code.
 

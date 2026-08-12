@@ -1,18 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { renderCollapsedResult } from "./render.ts";
+import { aggregationStore } from "./aggregate.ts";
+import { renderCollapsedCall, renderCollapsedResult } from "./render.ts";
 
 const theme = { fg: (_color: string, text: string) => text };
 
-test("narrow collapsed results remain one truncated line", () => {
-	const component = renderCollapsedResult("unknown", { huge: "x".repeat(80) }, { content: [{ type: "text", text: "y".repeat(80) }] }, { expanded: false, isPartial: false, isError: false }, theme);
-	const lines = component.render(18);
-	assert.equal(lines.length, 1);
-	assert.ok(visibleWidth(lines[0]) <= 18);
+test("only the first tool row anchors an aggregate and remains width-safe", () => {
+	aggregationStore.reset();
+	aggregationStore.beginTurn(0);
+	const first = renderCollapsedCall("read", { path: "x".repeat(100) }, theme, { toolCallId: "a", isPartial: true });
+	const second = renderCollapsedCall("bash", { command: "pwd" }, theme, { toolCallId: "b", isPartial: true });
+	assert.equal(first.render(18).length, 1);
+	assert.ok(visibleWidth(first.render(18)[0]) <= 18);
+	assert.deepEqual(second.render(80), []);
 });
 
-test("error output expands by default", () => {
-	const component = renderCollapsedResult("unknown", {}, { content: [{ type: "text", text: "bad details" }] }, { expanded: false, isPartial: false, isError: true }, theme);
-	assert.ok(component.render(80).length > 1);
+test("result slots stay empty while updating the aggregate", () => {
+	const result = renderCollapsedResult("read", { path: "a" }, { content: [{ type: "text", text: "body" }] }, { isPartial: false, isError: false }, theme, { toolCallId: "a" });
+	assert.deepEqual(result.render(80), []);
+	assert.equal(aggregationStore.current()?.calls[0].endedAt !== undefined, true);
 });
