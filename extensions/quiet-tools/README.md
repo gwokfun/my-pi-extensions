@@ -2,6 +2,7 @@
 
 Grok Build-style, one-line rendering for Pi's built-in `read`, `bash`, `edit`, `write`, `find`, `grep`, and `ls` tools. The plugin obtains each implementation from Pi's public factory and delegates execution unchanged; only the visual shell is replaced.
 
+
 After installation, calls from one agent turn are folded into a time-range group such as `› ▶ 11/11 tools · 13.8s`. This provides two levels of folding: select and open one group to see its tool rows, then select and open only one row to see that tool's full output. Opening either level does not expand its siblings. Running calls use `◇`, completed calls `◆`, and failures `✗`.
 
 When a turn contains only reads, they receive a purpose-built aggregate instead of repeated tool rows:
